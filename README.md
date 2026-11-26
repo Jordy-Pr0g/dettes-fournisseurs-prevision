@@ -17,7 +17,7 @@ Sinon :
 ```
 python -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python -m streamlit run app.py
+.venv/bin/python -m streamlit run app.py --server.address localhost
 ```
 
 ## Le workflow
