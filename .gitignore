@@ -1,0 +1,5 @@
+.venv/
+__pycache__/
+*.pyc
+sorties_pipeline_v1.1/
+.streamlit/secrets.toml
