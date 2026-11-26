@@ -53,12 +53,17 @@ def analyse(content, filename):
 
 def to_excel(tabs):
     buffer = io.BytesIO()
-    with pd.ExcelWriter(buffer, datetime_format="DD/MM/YYYY") as writer:
+    with pd.ExcelWriter(buffer) as writer:
         for name, frame in tabs.items():
             frame.to_excel(writer, sheet_name=name, index=False)
+            sheet = writer.sheets[name]
             for i, col in enumerate(frame.columns):
-                width = max(len(str(col)), int(frame[col].astype(str).str.len().max() or 0) if len(frame) else 0) + 2
-                writer.sheets[name].column_dimensions[chr(65 + i)].width = min(width, 60)
+                is_date = pd.api.types.is_datetime64_any_dtype(frame[col])
+                width = max(len(str(col)), int(frame[col].astype(str).str.len().max() or 0) if len(frame) else 0, 12 if is_date else 0) + 2
+                sheet.column_dimensions[chr(65 + i)].width = min(width, 60)
+                if is_date:
+                    for row in range(2, len(frame) + 2):
+                        sheet.cell(row, i + 1).number_format = "DD/MM/YYYY"
     return buffer.getvalue()
 
 
