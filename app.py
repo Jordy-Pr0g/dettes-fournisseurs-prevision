@@ -30,8 +30,19 @@ with st.spinner("Chargement de l'application..."):
     from prevision import EXCEL, MODEL, RULE
 
 DEMO_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "factures_fournisseurs_synthetique.csv")
-COLORS = {"Réel": "#0b0b0b", "Excel": comparaison.COLORS[EXCEL], "Règle simple": comparaison.COLORS[RULE], "Modèle": comparaison.COLORS[MODEL]}
+# Palette vérifiée (lisible pour les daltoniens) : une couleur fixe par méthode
+COLORS = {"Réel": "#0F1E36", "Excel": "#5B5FC7", "Règle simple": "#E0703C", "Modèle": "#0F9D8A"}
 SHORT = {EXCEL: "Excel", RULE: "Règle simple", MODEL: "Modèle"}
+# Couleur de fond et de texte par type d'alerte, de la plus urgente à la moins urgente
+ALERT_STYLE = {
+    "Échéance dépassée": ("#FDE8E8", "#9B1C1C"),
+    "Anomalie à résoudre": ("#FFEDD5", "#9A3412"),
+    "Échéance proche, pas validée": ("#FEF3C7", "#854D0E"),
+    "Risque de retard élevé": ("#E0F2FE", "#075985"),
+}
+# Axe des montants à la française : 3,5 M€, 500 k€
+AXIS_EUROS = ("datum.value >= 1000000 ? replace(format(datum.value / 1000000, '.1f'), '.', ',') + ' M€' : "
+              "datum.value >= 1000 ? format(datum.value / 1000, '.0f') + ' k€' : format(datum.value, '.0f') + ' €'")
 
 
 @st.cache_data(show_spinner=False)
@@ -78,33 +89,76 @@ def short_euros(value):
     return f"{value / 1000:.0f} k€"
 
 
+def french(value, decimals=0):
+    """12770.9 -> '12 770,90' (espace insécable fine pour les milliers)."""
+    return f"{value:,.{decimals}f}".replace(",", " ").replace(".", ",")
+
+
+def headline(methods):
+    """Le résultat principal du projet, affiché en haut de la page."""
+    error = methods.set_index("methode").erreur_moyenne_eur_semaine
+    excel, model = error[EXCEL], error[MODEL]
+    pct = methods.set_index("methode").erreur_en_pct_du_reel
+    gain = (excel - model) / excel * 100
+    return f"""
+<div style="background:linear-gradient(120deg,#0F1E36 0%,#16365C 55%,#0F9D8A 100%);border-radius:16px;padding:22px 28px;margin:4px 0 18px 0;color:#FFFFFF;
+            display:flex;flex-wrap:wrap;align-items:center;gap:18px 40px;box-shadow:0 6px 18px rgba(15,30,54,0.18);">
+  <div>
+    <div style="font-size:0.8rem;letter-spacing:0.08em;text-transform:uppercase;opacity:0.8;">Résultat sur 21 semaines de test</div>
+    <div style="font-size:2.6rem;font-weight:800;line-height:1.1;">−{french(gain, 1)} %</div>
+    <div style="font-size:0.95rem;opacity:0.9;">d'erreur de prévision par rapport à Excel</div>
+  </div>
+  <div style="display:flex;gap:28px;flex-wrap:wrap;">
+    <div><div style="font-size:0.8rem;opacity:0.8;">Erreur moyenne avec Excel</div>
+         <div style="font-size:1.35rem;font-weight:700;color:#C7C9F5;">{french(excel)} € / semaine</div>
+         <div style="font-size:0.8rem;opacity:0.8;">{french(pct[EXCEL], 1)} % du réel</div></div>
+    <div><div style="font-size:0.8rem;opacity:0.8;">Erreur moyenne avec le modèle</div>
+         <div style="font-size:1.35rem;font-weight:700;color:#7FF0DD;">{french(model)} € / semaine</div>
+         <div style="font-size:0.8rem;opacity:0.8;">{french(pct[MODEL], 1)} % du réel</div></div>
+  </div>
+</div>"""
+
+
+def style_alerts(view):
+    """Colore la colonne Alerte selon l'urgence et met les montants et les dates à la française."""
+    def color(label):
+        background, text = ALERT_STYLE.get(label, ("", ""))
+        return f"background-color: {background}; color: {text}; font-weight: 600;" if background else ""
+    styler = view.style.map(color, subset=["Alerte"])
+    return styler.format({"Montant TTC (€)": lambda v: french(v, 2), "Échéance": lambda d: f"{d:%d/%m/%Y}" if pd.notna(d) else ""})
+
+
 def chart_forecast(forecast, show_real):
     columns = {"prevision_excel": "Excel", "prevision_modele": "Modèle"}
     if show_real:
         columns["paye_en_realite"] = "Réel"
     long = forecast.rename(columns=columns).melt(id_vars="semaine_du", value_vars=list(columns.values()), var_name="Méthode", value_name="Montant")
     long["Semaine"] = long.semaine_du.dt.strftime("%d/%m")
+    long["Montant (€)"] = long.Montant.map(french)
     order = list(columns.values())
-    return (alt.Chart(long).mark_bar(cornerRadiusEnd=3).encode(
+    return (alt.Chart(long).mark_bar(cornerRadiusEnd=4).encode(
         x=alt.X("Semaine:N", sort=None, title="Semaine du", axis=alt.Axis(labelAngle=0)),
         xOffset=alt.XOffset("Méthode:N", sort=order),
-        y=alt.Y("Montant:Q", title="Sorties d'argent (€)", axis=alt.Axis(format="~s")),
+        y=alt.Y("Montant:Q", title=None, axis=alt.Axis(labelExpr=AXIS_EUROS)),
         color=alt.Color("Méthode:N", sort=order, scale=alt.Scale(domain=order, range=[COLORS[m] for m in order]), legend=alt.Legend(orient="top", title=None)),
-        tooltip=[alt.Tooltip("Semaine:N", title="Semaine du"), "Méthode:N", alt.Tooltip("Montant:Q", format=",.0f", title="Montant (€)")],
+        tooltip=[alt.Tooltip("Semaine:N", title="Semaine du"), "Méthode:N", "Montant (€):N"],
     ).properties(height=340))
 
 
 def chart_weeks(table, selected):
     long = table.rename(columns=SHORT).rename_axis("Semaine").reset_index().melt(id_vars="Semaine", value_vars=selected, var_name="Méthode", value_name="Montant")
-    return (alt.Chart(long).mark_line(strokeWidth=2, point=alt.OverlayMarkDef(size=28)).encode(
+    long["Montant (€)"] = long.Montant.map(french)
+    return (alt.Chart(long).mark_line(strokeWidth=2, point=alt.OverlayMarkDef(size=36)).encode(
         x=alt.X("Semaine:T", title=None, axis=alt.Axis(format="%d/%m")),
-        y=alt.Y("Montant:Q", title="Sorties d'argent par semaine (€)", axis=alt.Axis(format="~s")),
+        y=alt.Y("Montant:Q", title=None, axis=alt.Axis(labelExpr=AXIS_EUROS)),
         color=alt.Color("Méthode:N", sort=selected, scale=alt.Scale(domain=selected, range=[COLORS[m] for m in selected]), legend=alt.Legend(orient="top", title=None)),
-        tooltip=[alt.Tooltip("Semaine:T", format="%d/%m/%Y"), "Méthode:N", alt.Tooltip("Montant:Q", format=",.0f", title="Montant (€)")],
+        tooltip=[alt.Tooltip("Semaine:T", format="%d/%m/%Y", title="Semaine du"), "Méthode:N", "Montant (€):N"],
     ).properties(height=380))
 
 
 with st.sidebar:
+    st.markdown("<div style='font-size:0.75rem;letter-spacing:0.12em;text-transform:uppercase;color:#2DD4BF;font-weight:700;margin-bottom:4px;'>"
+                "Trésorerie · Dettes fournisseurs</div>", unsafe_allow_html=True)
     st.header("Données")
     source = st.radio("Source", ["Données de démonstration", "Importer un fichier"], label_visibility="collapsed")
     if source == "Importer un fichier":
@@ -137,6 +191,8 @@ with st.sidebar:
     as_of = st.selectbox("Lundi", mondays, index=default, format_func=lambda d: d.strftime("%d/%m/%Y"), label_visibility="collapsed")
     st.caption("La vue ne regarde que ce qui est connu ce jour-là.")
 
+st.markdown(headline(results["methods"]), unsafe_allow_html=True)
+
 monday_tab, compare_tab, quality_tab, about_tab = st.tabs(["Lundi matin", "Excel contre modèle", "Qualité des données", "À propos"])
 
 with monday_tab:
@@ -146,10 +202,10 @@ with monday_tab:
     this_week = forecast.iloc[0]
 
     a, b, c, d = st.columns(4)
-    a.metric("Factures ouvertes", f"{n_open:,}".replace(",", " "))
-    b.metric("Alertes", f"{len(alerts):,}".replace(",", " "))
-    c.metric("Sorties prévues", short_euros(this_week.prevision_modele), help="Pour la semaine qui commence, selon le modèle.")
-    d.metric("Selon Excel", short_euros(this_week.prevision_excel), help="Pour la semaine qui commence, en supposant chaque facture payée à son échéance.")
+    a.metric("Factures ouvertes", french(n_open), border=True)
+    b.metric("Alertes", french(len(alerts)), border=True)
+    c.metric("Sorties prévues", short_euros(this_week.prevision_modele), help="Pour la semaine qui commence, selon le modèle.", border=True)
+    d.metric("Selon Excel", short_euros(this_week.prevision_excel), help="Pour la semaine qui commence, en supposant chaque facture payée à son échéance.", border=True)
 
     st.subheader(f"Sorties d'argent prévues à partir du {as_of:%d/%m/%Y}")
     show_real = st.checkbox("Afficher ce qui a été payé en réalité (vérification, inconnu d'un vrai trésorier)")
@@ -164,10 +220,17 @@ with monday_tab:
               "due_date": "Échéance", "jours_avant_echeance": "Jours avant échéance", "validee": "Validée", "anomaly_type": "Anomalie",
               "proba_retard": "Risque de retard", "approver_id": "Valideur"}
     view = view.rename(columns=labels)
-    st.dataframe(view, hide_index=True, width="stretch", height=380, column_config={
-        "Montant TTC (€)": st.column_config.NumberColumn(format="localized"),
-        "Échéance": st.column_config.DateColumn(format="DD/MM/YYYY"),
-        "Risque de retard": st.column_config.ProgressColumn(format="percent", min_value=0, max_value=1),
+    view["Famille"] = view["Famille"].replace({"Interim": "Intérim"})
+    st.dataframe(style_alerts(view), hide_index=True, width="stretch", height=380, column_config={
+        "Alerte": st.column_config.Column(width=200),
+        "Facture": st.column_config.Column(width=135),
+        "Fournisseur": st.column_config.Column(width=190),
+        "Famille": st.column_config.Column(width=125),
+        "Montant TTC (€)": st.column_config.Column(width=120),
+        "Échéance": st.column_config.Column(width=100),
+        "Jours avant échéance": st.column_config.NumberColumn("Jours restants", width=110),
+        "Validée": st.column_config.Column(width=75),
+        "Risque de retard": st.column_config.ProgressColumn(format="percent", min_value=0, max_value=1, width=130),
     })
     st.caption("Classées par urgence, puis par montant. Les seuils d'alerte sont des propositions, à valider avec un trésorier.")
     st.download_button("Télécharger la vue en Excel", to_excel({"prevision_8_semaines": forecast, "alertes": view}),

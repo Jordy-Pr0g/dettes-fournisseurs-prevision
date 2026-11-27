@@ -1,6 +1,23 @@
 [theme]
 base = "light"
-primaryColor = "#1F3A6E"
+primaryColor = "#0F9D8A"
+backgroundColor = "#F6F8FB"
+secondaryBackgroundColor = "#E8EDF4"
+textColor = "#0F1E36"
+linkColor = "#0B7A6B"
+borderColor = "#D5DDE8"
+dataframeHeaderBackgroundColor = "#EDF1F7"
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap, sans-serif"
+headingFont = "Plus Jakarta Sans:https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&display=swap, sans-serif"
+baseRadius = "medium"
+chartCategoricalColors = ["#5B5FC7", "#E0703C", "#0F9D8A", "#0F1E36"]
+
+[theme.sidebar]
+backgroundColor = "#0F1E36"
+secondaryBackgroundColor = "#1B2D4D"
+textColor = "#E6ECF5"
+primaryColor = "#2DD4BF"
+borderColor = "#2A3F63"
 
 [browser]
 gatherUsageStats = false
