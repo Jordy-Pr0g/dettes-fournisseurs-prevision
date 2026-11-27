@@ -31,14 +31,15 @@ with st.spinner("Chargement de l'application..."):
 
 DEMO_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "factures_fournisseurs_synthetique.csv")
 # Palette vérifiée (lisible pour les daltoniens) : une couleur fixe par méthode
-COLORS = {"Réel": "#0F1E36", "Excel": "#5B5FC7", "Règle simple": "#E0703C", "Modèle": "#0F9D8A"}
+COLORS = {"Réel": "#F4F6FB", "Excel": "#5B7BE0", "Règle simple": "#D2742E", "Modèle": "#21AD78"}
+MINT = "#3DDC97"
 SHORT = {EXCEL: "Excel", RULE: "Règle simple", MODEL: "Modèle"}
 # Couleur de fond et de texte par type d'alerte, de la plus urgente à la moins urgente
 ALERT_STYLE = {
-    "Échéance dépassée": ("#FDE8E8", "#9B1C1C"),
-    "Anomalie à résoudre": ("#FFEDD5", "#9A3412"),
-    "Échéance proche, pas validée": ("#FEF3C7", "#854D0E"),
-    "Risque de retard élevé": ("#E0F2FE", "#075985"),
+    "Échéance dépassée": ("rgba(248,113,113,0.18)", "#FCA5A5"),
+    "Anomalie à résoudre": ("rgba(251,146,60,0.18)", "#FDBA74"),
+    "Échéance proche, pas validée": ("rgba(250,204,21,0.15)", "#FDE68A"),
+    "Risque de retard élevé": ("rgba(56,189,248,0.16)", "#7DD3FC"),
 }
 # Axe des montants à la française : 3,5 M€, 500 k€
 AXIS_EUROS = ("datum.value >= 1000000 ? replace(format(datum.value / 1000000, '.1f'), '.', ',') + ' M€' : "
@@ -101,20 +102,24 @@ def headline(methods):
     pct = methods.set_index("methode").erreur_en_pct_du_reel
     gain = (excel - model) / excel * 100
     return f"""
-<div style="background:linear-gradient(120deg,#0F1E36 0%,#16365C 55%,#0F9D8A 100%);border-radius:16px;padding:22px 28px;margin:4px 0 18px 0;color:#FFFFFF;
-            display:flex;flex-wrap:wrap;align-items:center;gap:18px 40px;box-shadow:0 6px 18px rgba(15,30,54,0.18);">
+<div style="background:linear-gradient(135deg,#14215E 0%,#0E1A4C 60%,#0B2547 100%);border:1px solid rgba(61,220,151,0.35);border-radius:18px;
+            padding:22px 28px;margin:4px 0 18px 0;color:#FFFFFF;display:flex;flex-wrap:wrap;align-items:center;gap:18px 44px;
+            box-shadow:0 12px 40px rgba(61,220,151,0.14);">
   <div>
-    <div style="font-size:0.8rem;letter-spacing:0.08em;text-transform:uppercase;opacity:0.8;">Résultat sur 21 semaines de test</div>
-    <div style="font-size:2.6rem;font-weight:800;line-height:1.1;">−{french(gain, 1)} %</div>
-    <div style="font-size:0.95rem;opacity:0.9;">d'erreur de prévision par rapport à Excel</div>
+    <span style="display:inline-block;background:{MINT};color:#0B1640;font-size:0.72rem;font-weight:700;padding:3px 10px;border-radius:999px;">
+      Résultat sur 21 semaines de test</span>
+    <div style="font-size:2.7rem;font-weight:800;line-height:1.15;color:{MINT};margin-top:6px;">−{french(gain, 1)} %</div>
+    <div style="font-size:0.95rem;opacity:0.85;">d'erreur de prévision par rapport à Excel</div>
   </div>
-  <div style="display:flex;gap:28px;flex-wrap:wrap;">
-    <div><div style="font-size:0.8rem;opacity:0.8;">Erreur moyenne avec Excel</div>
-         <div style="font-size:1.35rem;font-weight:700;color:#C7C9F5;">{french(excel)} € / semaine</div>
-         <div style="font-size:0.8rem;opacity:0.8;">{french(pct[EXCEL], 1)} % du réel</div></div>
-    <div><div style="font-size:0.8rem;opacity:0.8;">Erreur moyenne avec le modèle</div>
-         <div style="font-size:1.35rem;font-weight:700;color:#7FF0DD;">{french(model)} € / semaine</div>
-         <div style="font-size:0.8rem;opacity:0.8;">{french(pct[MODEL], 1)} % du réel</div></div>
+  <div style="display:flex;gap:16px;flex-wrap:wrap;">
+    <div style="background:rgba(255,255,255,0.04);border:1px solid #24336E;border-radius:12px;padding:12px 18px;">
+         <div style="font-size:0.78rem;opacity:0.75;">Erreur moyenne avec Excel</div>
+         <div style="font-size:1.35rem;font-weight:700;color:#9DB0F5;">{french(excel)} € / semaine</div>
+         <div style="font-size:0.78rem;opacity:0.75;">{french(pct[EXCEL], 1)} % du réel</div></div>
+    <div style="background:rgba(61,220,151,0.08);border:1px solid rgba(61,220,151,0.4);border-radius:12px;padding:12px 18px;">
+         <div style="font-size:0.78rem;opacity:0.75;">Erreur moyenne avec le modèle</div>
+         <div style="font-size:1.35rem;font-weight:700;color:{MINT};">{french(model)} € / semaine</div>
+         <div style="font-size:0.78rem;opacity:0.75;">{french(pct[MODEL], 1)} % du réel</div></div>
   </div>
 </div>"""
 
@@ -157,7 +162,7 @@ def chart_weeks(table, selected):
 
 
 with st.sidebar:
-    st.markdown("<div style='font-size:0.75rem;letter-spacing:0.12em;text-transform:uppercase;color:#2DD4BF;font-weight:700;margin-bottom:4px;'>"
+    st.markdown("<div style='font-size:0.75rem;letter-spacing:0.12em;text-transform:uppercase;color:#3DDC97;font-weight:700;margin-bottom:4px;'>"
                 "Trésorerie · Dettes fournisseurs</div>", unsafe_allow_html=True)
     st.header("Données")
     source = st.radio("Source", ["Données de démonstration", "Importer un fichier"], label_visibility="collapsed")

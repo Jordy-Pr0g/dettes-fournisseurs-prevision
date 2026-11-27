@@ -1,23 +1,23 @@
 [theme]
-base = "light"
-primaryColor = "#0F9D8A"
-backgroundColor = "#F6F8FB"
-secondaryBackgroundColor = "#E8EDF4"
-textColor = "#0F1E36"
-linkColor = "#0B7A6B"
-borderColor = "#D5DDE8"
-dataframeHeaderBackgroundColor = "#EDF1F7"
+base = "dark"
+primaryColor = "#21AD78"
+backgroundColor = "#0B1640"
+secondaryBackgroundColor = "#16235A"
+textColor = "#FFFFFF"
+linkColor = "#3DDC97"
+borderColor = "#24336E"
+dataframeHeaderBackgroundColor = "#16235A"
 font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap, sans-serif"
 headingFont = "Plus Jakarta Sans:https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&display=swap, sans-serif"
 baseRadius = "medium"
-chartCategoricalColors = ["#5B5FC7", "#E0703C", "#0F9D8A", "#0F1E36"]
+chartCategoricalColors = ["#5B7BE0", "#D2742E", "#21AD78", "#F4F6FB"]
 
 [theme.sidebar]
-backgroundColor = "#0F1E36"
-secondaryBackgroundColor = "#1B2D4D"
+backgroundColor = "#08102F"
+secondaryBackgroundColor = "#121D4A"
 textColor = "#E6ECF5"
-primaryColor = "#2DD4BF"
-borderColor = "#2A3F63"
+primaryColor = "#3DDC97"
+borderColor = "#1E2A5C"
 
 [browser]
 gatherUsageStats = false
